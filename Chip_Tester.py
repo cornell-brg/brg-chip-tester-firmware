@@ -37,9 +37,9 @@ def main():
                 data_with_eof = data_to_send + '\0'
                 pico.write(data_with_eof.encode('ascii'))  # Send as bytes
 
-                # Wait for a short period to allow the Pico to process the data
+                # Wait 32 sec seconds if test command passed
                 if data_to_send.lower().startswith('t'):
-                    time.sleep(32.0)
+                    time.sleep(40.0)
                 else:
                     time.sleep(2.0)
                 

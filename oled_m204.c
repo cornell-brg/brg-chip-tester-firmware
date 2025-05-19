@@ -48,3 +48,12 @@ void oled_write_text(int row, const char* text) {
 		i2c_write_blocking_err_check(I2C_CHAN, OLED_ADDR, send_data, 2, i != strlen(text) - 1);
 	}
 }
+
+void oled_write_blank(int row) {
+	oled_row_sel(row);
+	char* text = "                    ";
+	for (int i = 0; i < strlen(text); i++) {
+		const uint8_t send_data[] = {0x40, 0x20};
+		i2c_write_blocking_err_check(I2C_CHAN, OLED_ADDR, send_data, 2, i != strlen(text) - 1);
+	}
+}

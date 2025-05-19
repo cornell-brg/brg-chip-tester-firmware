@@ -49,7 +49,8 @@ target_sources(Chip_Tester PRIVATE
     tca6408a.c
     mcp4562.c
     ina220.c
-    si5351.c)
+    si5351.c
+    brgtc6_test/brgtc6_test.c)
 
 # must match with executable name
 target_link_libraries(Chip_Tester PRIVATE 

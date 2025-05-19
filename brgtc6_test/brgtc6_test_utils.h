@@ -16,6 +16,10 @@
 #define CHIP_0 0
 #define CHIP_1 1
 
+// Chip reset pins
+#define BRGTC6_RESET_PIN_0 6
+#define BRGTC6_RESET_PIN_1 7
+
 // Register mappings
 
 //-------------------------------+---------------------------+-----------+-
