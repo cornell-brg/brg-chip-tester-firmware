@@ -1,5 +1,8 @@
 #include "brgtc6_test.h"
 
+// Text buffer for printing test results
+char test_res_serial_buf[100];
+
 const uint32_t brgtc6_single_config_loopback_test_0[][2] = {
   {BRGTC6_MK_CNFG_MSG(CFG_ADDR_CLK_DIV_FACTOR, 2), CHIP_0}, // Set chip 0 clock divider factor to 2
   {BRGTC6_MK_CNFG_MSG(CFG_ADDR_CLK_DIV_SKEW, 0), CHIP_0},   // Set chip 0 clock divider skew to 0
@@ -87,45 +90,144 @@ const uint32_t brgtc6_dual_pattern_lfsr_test[][2] = {
   {BRGTC6_MK_CNFG_MSG(CFG_ADDR_PAT_ERR_COUNT, 0), CHIP_1}, // Pattern error count should be 0
 };
 
-void brgtc6_test1(bit* spi_send_buf, bit* spi_recv_buf, int spi_bits, int spi_speed, int write_screen, char* write_text) {
-
-  // Reset chips
+void brgtc6_reset() {
   gpio_put(BRGTC6_RESET_PIN_0, 1);
   gpio_put(BRGTC6_RESET_PIN_1, 1);
+  sleep_ms(1);
   gpio_put(BRGTC6_RESET_PIN_0, 0);
   gpio_put(BRGTC6_RESET_PIN_1, 0);
+}
+
+void brgtc6_decode_spi_msg(bit* spi_buf, int spi_bits, char* msg) {
+  uint32_t msg_val;
+  bits_to_uint(spi_buf, &msg_val, spi_bits);
+
+  // Decode message type
+  switch((msg_val & 0x30000) >> 16) {
+    case 0: // Channel message
+      sprintf(msg, "Channel: %d", msg_val & 0xFF);
+      break;
+    case 2: // Config message
+      switch((msg_val & 0x1F000) >> 12) {
+        case 0:
+          sprintf(msg, "Loopback: %s", ((msg_val & 0xFFF) != 0) ? "Enabled" : "Disabled");
+          break;
+        case 1:
+          sprintf(msg, "Pattern Bypass: %s", ((msg_val & 0xFFF) != 0) ? "Enabled" : "Disabled");
+          break;
+        case 2:
+          sprintf(msg, "Pattern Mode: %s", ((msg_val & 0xFFF) != 0) ? "LFSR" : "Pattern 1");
+          break;
+        case 3:
+          sprintf(msg, "Pattern 1 Up: 0x%x", msg_val & 0xFFF);
+          break;
+        case 4:
+          sprintf(msg, "Pattern 2 Up: 0x%x", msg_val & 0xFFF);
+          break;
+        case 5:
+          sprintf(msg, "Pattern 1 Down: 0x%x", msg_val & 0xFFF);
+          break;
+        case 6:
+          sprintf(msg, "Pattern 2 Down: 0x%x", msg_val & 0xFFF);
+          break;
+        case 7:
+          switch(msg_val & 0xFFF) {
+            case 0:
+              sprintf(msg, "Pattern State: Idle");
+              break;
+            case 1:
+              sprintf(msg, "Pattern State: Running");
+              break;
+            case 2:
+              sprintf(msg, "Pattern State: Locked");
+              break;
+            case 3:
+              sprintf(msg, "Pattern State: Error");
+              break;
+            default:
+              sprintf(msg, "Pattern State: Unknown");
+              break;
+          }
+          break;
+        case 8:
+          sprintf(msg, "Pattern Error Count: %d", msg_val & 0xFFF);
+          break;
+        case 9:
+          sprintf(msg, "Go: %s", ((msg_val & 0xFFF) != 0) ? "Enabled" : "Disabled");
+          break;
+        case 10:
+          sprintf(msg, "Clock Divider Factor: %d", msg_val & 0xFFF);
+          break;
+        case 11:
+          sprintf(msg, "Clock Divider Skew: %d", msg_val & 0xFFF);
+          break;
+        case 12:
+          sprintf(msg, "CRC Error Bit: %s", ((msg_val & 0xFFF) != 0) ? "Enabled" : "Disabled");
+          break;
+        case 13:
+          sprintf(msg, "Up Repair Select: %d", msg_val & 0xFFF);
+          break;
+        case 14:
+          sprintf(msg, "Down Repair Select: %d", msg_val & 0xFFF);
+          break;
+        case 15:
+          sprintf(msg, "Pattern Error Count: %d", msg_val & 0xFFF);
+          break;
+        case 16:
+          sprintf(msg, "Next Credit Count: %d", msg_val & 0xFFF);
+          break;
+        case 17:
+          sprintf(msg, "Credit Reset Delay: %d", msg_val & 0xFFF);
+          break;
+        default:
+          sprintf(msg, "Unknown message: %x", msg_val & 0x3FFFF);
+          break;
+      }
+  } 
+}
+
+void brgtc6_test1(bit* spi_send_buf, bit* spi_recv_buf, int spi_bits, int spi_speed, int write_screen, char* screen_text) {
+
+  // Reset chips
+  brgtc6_reset();
   printf("Running test: Single Config Loopback\n");
   if (write_screen) {
-    sprintf(write_text, "  BRGTC6 CFG LPBCK  ");
-    oled_write_text(0, write_text);
+    sprintf(screen_text, "  BRGTC6 CFG LPBCK  ");
+    oled_write_text(0, screen_text);
   }
+
   int fail = 0;
 
   // Test chip 0
   printf("Configuring chip 0...\n");
   if (write_screen) {
-    sprintf(write_text, " Configuring chip 0 ");
-    oled_write_text(1, write_text);
-    sprintf(write_text, "   Running 1/2...   ");
-    oled_write_text(2, write_text);
+    sprintf(screen_text, " Configuring chip 0 ");
+    oled_write_text(1, screen_text);
+    sprintf(screen_text, "   Running 1/2...   ");
+    oled_write_text(2, screen_text);
     oled_write_blank(3);
   }
   for (int i = 0; i < sizeof(brgtc6_single_config_loopback_test_0)/sizeof(brgtc6_single_config_loopback_test_0[0]); i++) {
     uint_to_bits(brgtc6_single_config_loopback_test_0[i][0], spi_send_buf, spi_bits);
-    printf("Sent: 0x%x on %d, ", brgtc6_single_config_loopback_test_0[i][0], brgtc6_single_config_loopback_test_0[i][1]);
+    brgtc6_decode_spi_msg(spi_send_buf, spi_bits, test_res_serial_buf);
+    printf("Chip %d - Sent: %s - ", brgtc6_single_config_loopback_test_0[i][1], test_res_serial_buf);
     int good_tx = bitwise_spi_read_write(spi_send_buf, spi_recv_buf, spi_bits, spi_speed, brgtc6_single_config_loopback_test_0[i][1]);
+    if (!good_tx || !check_bits(spi_recv_buf, spi_send_buf, spi_bits)) {
+      printf("No response\n");
+      fail = 1;
+      break;
+    }
     uint32_t spi_recv_val;
     bits_to_uint(spi_recv_buf, &spi_recv_val, spi_bits);
-    printf("Rcvd: 0x%x\n", spi_recv_val);
-    if (!good_tx || !check_bits(spi_recv_buf, spi_send_buf, spi_bits))
-      fail = 1;
+    brgtc6_decode_spi_msg(spi_recv_buf, spi_bits, test_res_serial_buf);
+    printf("Rcvd: %s\n", test_res_serial_buf);
   }
 
   // Fail if error, stop tests
   if (fail) {
     if (write_screen) {
-      sprintf(write_text, "   TEST FAIL 1/2    ");
-      oled_write_text(3, write_text);
+      sprintf(screen_text, "   TEST FAIL 1/2    ");
+      oled_write_text(3, screen_text);
     }
     printf("Test Failed\n");
     return;
@@ -134,44 +236,49 @@ void brgtc6_test1(bit* spi_send_buf, bit* spi_recv_buf, int spi_bits, int spi_sp
   // Test chip 1
   printf("Configuring chip 1...\n");
   if (write_screen) {
-    sprintf(write_text, " Configuring chip 1 ");
-    oled_write_text(1, write_text);
-    sprintf(write_text, "   Running 2/2...   ");
-    oled_write_text(2, write_text);
+    sprintf(screen_text, " Configuring chip 1 ");
+    oled_write_text(1, screen_text);
+    sprintf(screen_text, "   Running 2/2...   ");
+    oled_write_text(2, screen_text);
     oled_write_blank(3);
   }
   for (int i = 0; i < sizeof(brgtc6_single_config_loopback_test_1)/sizeof(brgtc6_single_config_loopback_test_1[0]); i++) {
     uint_to_bits(brgtc6_single_config_loopback_test_1[i][0], spi_send_buf, spi_bits);
-    printf("Sent: 0x%x on %d, ", brgtc6_single_config_loopback_test_1[i][0], brgtc6_single_config_loopback_test_1[i][1]);
+    brgtc6_decode_spi_msg(spi_send_buf, spi_bits, test_res_serial_buf);
+    printf("Chip %d - Sent: %s - ", brgtc6_single_config_loopback_test_1[i][1], test_res_serial_buf);
     int good_tx = bitwise_spi_read_write(spi_send_buf, spi_recv_buf, spi_bits, spi_speed, brgtc6_single_config_loopback_test_1[i][1]);
+    if (!good_tx || !check_bits(spi_recv_buf, spi_send_buf, spi_bits)) {
+      printf("No response\n");
+      fail = 1;
+      break;
+    }
     uint32_t spi_recv_val;
     bits_to_uint(spi_recv_buf, &spi_recv_val, spi_bits);
-    printf("Rcvd: 0x%x\n", spi_recv_val);
-    if (!good_tx || !check_bits(spi_recv_buf, spi_send_buf, spi_bits))
-      fail = 1;
+    brgtc6_decode_spi_msg(spi_recv_buf, spi_bits, test_res_serial_buf);
+    printf("Rcvd: %s\n", test_res_serial_buf);
   }
 
   // Pass or fail test
   if (fail) {
     if (write_screen) {
-      sprintf(write_text, "   TEST FAIL 2/2    ");
-      oled_write_text(3, write_text);
+      sprintf(screen_text, "   TEST FAIL 2/2    ");
+      oled_write_text(3, screen_text);
     }
     printf("Test Failed\n");
   } else {
     if (write_screen) {
-      sprintf(write_text, "   TEST PASS 2/2    ");
-      oled_write_text(3, write_text);
+      sprintf(screen_text, "   TEST PASS 2/2    ");
+      oled_write_text(3, screen_text);
     }
     printf("Test Passed\n");
   } 
 }
 
-void brgtc6_test2(bit* spi_send_buf, bit* spi_recv_buf, int spi_bits, int spi_speed, int write_screen, char* write_text, int* clk0_freq, int* clk1_freq) {
+void brgtc6_test2(bit* spi_send_buf, bit* spi_recv_buf, int spi_bits, int spi_speed, int write_screen, char* screen_text, int* clk0_freq, int* clk1_freq) {
   printf("Running test: Dual Pattern Fixed\n");
   if (write_screen) {
-    sprintf(write_text, "BRGTC6 DUAL PAT FIXD");
-    oled_write_text(0, write_text);
+    sprintf(screen_text, "BRGTC6 DUAL PAT FIXD");
+    oled_write_text(0, screen_text);
   }
   int clock_combs[3][2] = {
     {100000, 100000},
@@ -192,38 +299,40 @@ void brgtc6_test2(bit* spi_send_buf, bit* spi_recv_buf, int spi_bits, int spi_sp
     *clk1_freq = clock_combs[i][1];
     set_clock(CLK0, *clk0_freq);
     set_clock(CLK1, *clk1_freq);
-    gpio_put(BRGTC6_RESET_PIN_0, 1);
-    gpio_put(BRGTC6_RESET_PIN_1, 1);
-    gpio_put(BRGTC6_RESET_PIN_0, 0);
-    gpio_put(BRGTC6_RESET_PIN_1, 0);
-    printf("Set clocks to %d and %d\n", clock_combs[i][0], clock_combs[i][1]);
+    brgtc6_reset();
+    printf("Set clock 0: %d - Set clock 1: %d\n", clock_combs[i][0], clock_combs[i][1]);
     if (write_screen) {
-      sprintf(write_text, "  CLK0: %.2fMHz   ", (*clk0_freq)/1000.0);
-      oled_write_text(1, write_text);
-      sprintf(write_text, "  CLK1: %.2fMHz   ", (*clk1_freq)/1000.0);
-      oled_write_text(2, write_text);
-      sprintf(write_text, "   Running %d/%d...   ", i+1, sizeof(clock_combs)/sizeof(clock_combs[0]));
-      oled_write_text(3, write_text);
+      sprintf(screen_text, "  CLK0: %.2fMHz   ", (*clk0_freq)/1000.0);
+      oled_write_text(1, screen_text);
+      sprintf(screen_text, "  CLK1: %.2fMHz   ", (*clk1_freq)/1000.0);
+      oled_write_text(2, screen_text);
+      sprintf(screen_text, "   Running %d/%d...   ", i+1, sizeof(clock_combs)/sizeof(clock_combs[0]));
+      oled_write_text(3, screen_text);
     }
 
     // Send configuration commands and check for errors
     for (int j = 0; j < sizeof(brgtc6_dual_pattern_fixed_test)/sizeof(brgtc6_dual_pattern_fixed_test[0]); j++) {
       if (j == 18) sleep_ms(10000);
       uint_to_bits(brgtc6_dual_pattern_fixed_test[j][0], spi_send_buf, spi_bits);
-      printf("Sent: 0x%x on %d, ", brgtc6_dual_pattern_fixed_test[j][0], brgtc6_dual_pattern_fixed_test[j][1]);
+      brgtc6_decode_spi_msg(spi_send_buf, spi_bits, test_res_serial_buf);
+      printf("Chip %d - Sent: %s - ", brgtc6_dual_pattern_fixed_test[j][1], test_res_serial_buf);
       int good_tx = bitwise_spi_read_write(spi_send_buf, spi_recv_buf, spi_bits, spi_speed, brgtc6_dual_pattern_fixed_test[j][1]);
+      if (!good_tx || !check_bits(spi_recv_buf, spi_send_buf, spi_bits)) {
+        printf("No response\n");
+        fail = 1;
+        break;
+      }
       uint32_t spi_recv_val;
       bits_to_uint(spi_recv_buf, &spi_recv_val, spi_bits);
-      printf("Rcvd: 0x%x\n", spi_recv_val);
-      if (!good_tx || !check_bits(spi_recv_buf, spi_send_buf, spi_bits))
-        fail = 1;
+      brgtc6_decode_spi_msg(spi_recv_buf, spi_bits, test_res_serial_buf);
+      printf("Rcvd: %s\n", test_res_serial_buf);
     }
 
     // Fail if error, stop tests
     if (fail) {
       if (write_screen) {
-        sprintf(write_text, "   TEST FAIL %d/%d    ", i+1, sizeof(clock_combs)/sizeof(clock_combs[0]));
-        oled_write_text(3, write_text);
+        sprintf(screen_text, "   TEST FAIL %d/%d    ", i+1, sizeof(clock_combs)/sizeof(clock_combs[0]));
+        oled_write_text(3, screen_text);
       }
       printf("Test Failed\n");
       break;
@@ -233,11 +342,11 @@ void brgtc6_test2(bit* spi_send_buf, bit* spi_recv_buf, int spi_bits, int spi_sp
   // If no errors, test passed
   if (!fail) {
     if (write_screen) {
-      sprintf(write_text, "   TEST PASS %d/%d    ", 
+      sprintf(screen_text, "   TEST PASS %d/%d    ", 
         sizeof(clock_combs)/sizeof(clock_combs[0]), 
         sizeof(clock_combs)/sizeof(clock_combs[0])
       );
-      oled_write_text(3, write_text);
+      oled_write_text(3, screen_text);
     }
     printf("Test Passed\n");
   }
@@ -247,11 +356,11 @@ void brgtc6_test2(bit* spi_send_buf, bit* spi_recv_buf, int spi_bits, int spi_sp
   *clk1_freq = prev_clk1_freq;
 }
 
-void brgtc6_test3(bit* spi_send_buf, bit* spi_recv_buf, int spi_bits, int spi_speed, int write_screen, char* write_text, int* clk0_freq, int* clk1_freq){
+void brgtc6_test3(bit* spi_send_buf, bit* spi_recv_buf, int spi_bits, int spi_speed, int write_screen, char* screen_text, int* clk0_freq, int* clk1_freq){
   printf("Running test: Dual Pattern LFSR\n");
   if (write_screen) {
-    sprintf(write_text, "BRGTC6 DUAL PAT LFSR");
-    oled_write_text(0, write_text);
+    sprintf(screen_text, "BRGTC6 DUAL PAT LFSR");
+    oled_write_text(0, screen_text);
   }
   int clock_combs[3][2] = {
     {100000, 100000},
@@ -272,38 +381,40 @@ void brgtc6_test3(bit* spi_send_buf, bit* spi_recv_buf, int spi_bits, int spi_sp
     *clk1_freq = clock_combs[i][1];
     set_clock(CLK0, *clk0_freq);
     set_clock(CLK1, *clk1_freq);
-    gpio_put(BRGTC6_RESET_PIN_0, 1);
-    gpio_put(BRGTC6_RESET_PIN_1, 1);
-    gpio_put(BRGTC6_RESET_PIN_0, 0);
-    gpio_put(BRGTC6_RESET_PIN_1, 0);
-    printf("Set clocks to %d and %d\n", clock_combs[i][0], clock_combs[i][1]);
+    brgtc6_reset();
+    printf("Set clock 0: %d - Set clock 1: %d\n", clock_combs[i][0], clock_combs[i][1]);
     if (write_screen) {
-      sprintf(write_text, "  CLK0: %.2fMHz   ", (*clk0_freq)/1000.0);
-      oled_write_text(1, write_text);
-      sprintf(write_text, "  CLK1: %.2fMHz   ", (*clk1_freq)/1000.0);
-      oled_write_text(2, write_text);
-      sprintf(write_text, "   Running %d/%d...   ", i+1, sizeof(clock_combs)/sizeof(clock_combs[0]));
-      oled_write_text(3, write_text);
+      sprintf(screen_text, "  CLK0: %.2fMHz   ", (*clk0_freq)/1000.0);
+      oled_write_text(1, screen_text);
+      sprintf(screen_text, "  CLK1: %.2fMHz   ", (*clk1_freq)/1000.0);
+      oled_write_text(2, screen_text);
+      sprintf(screen_text, "   Running %d/%d...   ", i+1, sizeof(clock_combs)/sizeof(clock_combs[0]));
+      oled_write_text(3, screen_text);
     }
 
     // Send configuration commands and check for errors
-    for (int i = 0; i < sizeof(brgtc6_dual_pattern_lfsr_test)/sizeof(brgtc6_dual_pattern_lfsr_test[0]); i++) {
-      if (i == 14) sleep_ms(10000);
-      uint_to_bits(brgtc6_dual_pattern_lfsr_test[i][0], spi_send_buf, spi_bits);
-      printf("Sent: 0x%x on %d, ", brgtc6_dual_pattern_lfsr_test[i][0], brgtc6_dual_pattern_lfsr_test[i][1]);
-      int good_tx = bitwise_spi_read_write(spi_send_buf, spi_recv_buf, spi_bits, spi_speed, brgtc6_dual_pattern_lfsr_test[i][1]);
+    for (int j = 0; j < sizeof(brgtc6_dual_pattern_lfsr_test)/sizeof(brgtc6_dual_pattern_lfsr_test[0]); j++) {
+      if (j == 14) sleep_ms(10000);
+      uint_to_bits(brgtc6_dual_pattern_lfsr_test[j][0], spi_send_buf, spi_bits);
+      brgtc6_decode_spi_msg(spi_send_buf, spi_bits, test_res_serial_buf);
+      printf("Chip %d - Sent: %s - ", brgtc6_dual_pattern_lfsr_test[j][1], test_res_serial_buf);
+      int good_tx = bitwise_spi_read_write(spi_send_buf, spi_recv_buf, spi_bits, spi_speed, brgtc6_dual_pattern_lfsr_test[j][1]);
+      if (!good_tx || !check_bits(spi_recv_buf, spi_send_buf, spi_bits)) {
+        printf("No response\n");
+        fail = 1;
+        break;
+      }
       uint32_t spi_recv_val;
       bits_to_uint(spi_recv_buf, &spi_recv_val, spi_bits);
-      printf("Rcvd: 0x%x\n", spi_recv_val);
-      if (!good_tx || !check_bits(spi_recv_buf, spi_send_buf, spi_bits))
-        fail = 1;
+      brgtc6_decode_spi_msg(spi_recv_buf, spi_bits, test_res_serial_buf);
+      printf("Rcvd: %s\n", test_res_serial_buf);
     }
 
     // Fail if error, stop tests
     if (fail) {
       if (write_screen) {
-        sprintf(write_text, "   TEST FAIL %d/%d    ", i+1, sizeof(clock_combs)/sizeof(clock_combs[0]));
-        oled_write_text(3, write_text);
+        sprintf(screen_text, "   TEST FAIL %d/%d    ", i+1, sizeof(clock_combs)/sizeof(clock_combs[0]));
+        oled_write_text(3, screen_text);
       }
       printf("Test Failed\n");
       break;
@@ -313,11 +424,11 @@ void brgtc6_test3(bit* spi_send_buf, bit* spi_recv_buf, int spi_bits, int spi_sp
   // If no errors, test passed
   if (!fail) {
     if (write_screen) {
-      sprintf(write_text, "   TEST PASS %d/%d    ", 
+      sprintf(screen_text, "   TEST PASS %d/%d    ", 
         sizeof(clock_combs)/sizeof(clock_combs[0]), 
         sizeof(clock_combs)/sizeof(clock_combs[0])
       );
-      oled_write_text(3, write_text);
+      oled_write_text(3, screen_text);
     }
     printf("Test Passed\n");
   }

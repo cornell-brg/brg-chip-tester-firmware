@@ -63,7 +63,7 @@ void init_si5351() {
 void set_clock(int channel, int freq) {
   switch(channel){
     case 0:
-      switch (freq) {
+      switch(freq) {
         case 10:
           init_seq[22][1] = 0x04;
           init_seq[23][1] = 0x62;
@@ -93,7 +93,7 @@ void set_clock(int channel, int freq) {
       }
       break;
     case 1:
-      switch (freq) {
+      switch(freq) {
         case 10:
           init_seq[30][1] = 0x04;
           init_seq[31][1] = 0x62;

@@ -8,12 +8,13 @@
 #include "ina220.h"
 #include "si5351.h"
 #include "pico/multicore.h"
+#include "tusb.h"
 
 // Test includes
 #include "brgtc6_test/brgtc6_test.h"
 
-// Text to write to the screen
-char write_text[21];
+// Text buffer for OLED screen
+char screen_text[21];
 
 // SPI parameters
 int spi_speed = 1000; // Default SPI speed
@@ -40,99 +41,97 @@ void core1_entry() {
   char next_c;
   while (true) {
 
-    // Read characters until end of line
-    while ((next_c = getchar()) != '\0') {
-      if (usb_recv_buf_idx < sizeof(usb_recv_buf)) {
-        if (usb_recv_buf_idx != 0 && (usb_recv_buf[0] == 'r' || usb_recv_buf[0] == 'w' || usb_recv_buf[0] == 'b') 
-          && next_c >= 'a' && next_c <= 'z') next_c -= 32;
-        usb_recv_buf[usb_recv_buf_idx++] = next_c;
-      }
-    }
-
-    // Handle serial data
-    if (usb_recv_buf[0] == 't') {
-      if (usb_recv_buf[1] == '1')
-        brgtc6_test1(spi_send_buf, spi_recv_buf, spi_bits, spi_speed, 0, write_text);
-      if (usb_recv_buf[1] == '2')
-        brgtc6_test2(spi_send_buf, spi_recv_buf, spi_bits, spi_speed, 0, write_text, &clk0_freq, &clk1_freq);
-      else if (usb_recv_buf[1] == '3')
-        brgtc6_test3(spi_send_buf, spi_recv_buf, spi_bits, spi_speed, 0, write_text, &clk0_freq, &clk1_freq);
-    } else if (usb_recv_buf[0] == 'b') {
-      make_bits(usb_recv_buf, spi_send_buf, usb_recv_buf_idx, 2, spi_bits);
-      int good_spi = bitwise_spi_read_write(spi_send_buf, spi_recv_buf, spi_bits, spi_speed, usb_recv_buf[1] - '0');
-      make_hex(spi_recv_buf, spi_recv_buf_hex, spi_bits / 4 + 1, spi_bits);
+    if (tud_cdc_available()) {
+      usb_recv_buf_idx = tud_cdc_read(usb_recv_buf, sizeof(usb_recv_buf) - 1);
       usb_recv_buf[usb_recv_buf_idx] = '\0';
-      spi_recv_buf_hex[spi_bits / 4 + 1] = '\0';
-      if (good_spi) {
-        printf("Rd/Wr Good\n");
-        printf("Response -> 0x");
-        printf(spi_recv_buf_hex);
-      } else printf("Rd/Wr Fail");
-      printf("\n"); 
-    } else if (usb_recv_buf[0] == 'r') {
-      int good_spi = bitwise_spi_read(spi_recv_buf, spi_bits, spi_speed, usb_recv_buf[1] - '0');
-      make_hex(spi_recv_buf, spi_recv_buf_hex, spi_bits / 4 + 1, spi_bits);
-      spi_recv_buf_hex[spi_bits / 4 + 1] = '\0';
-      if (good_spi) {
-        printf("Read Good\n");
-        printf("Response -> 0x");
-        printf(spi_recv_buf_hex);
-      } else printf("Read Fail");
-      printf("\n");
-    } else if (usb_recv_buf[0] == 'w') {
-      make_bits(usb_recv_buf, spi_send_buf, usb_recv_buf_idx, 2, spi_bits);
-      int good_spi = bitwise_spi_write(spi_send_buf, spi_bits, spi_speed, usb_recv_buf[1] - '0');
-      usb_recv_buf[usb_recv_buf_idx] = '\0';
-      if (good_spi) printf("Write Good\n");
-      else printf("Write Fail\n");
-    } else if (usb_recv_buf[0] == 's' && usb_recv_buf[1] == 's') {
-      int speed = get_int(usb_recv_buf, 2, usb_recv_buf_idx);
-      printf("SPI speed -> %dbps\n", speed);
-      spi_speed = speed;
-    } else if (usb_recv_buf[0] == 's' && usb_recv_buf[1] == 'b') {
-      int bits = get_int(usb_recv_buf, 2, usb_recv_buf_idx);
-      printf("SPI bits -> %d\n", bits);
-      spi_bits = bits;
-    } else if (usb_recv_buf[0] == 'v' && usb_recv_buf[1] == 'c') {
-      float core_voltage = get_float(usb_recv_buf, usb_recv_buf[2] == 'p' ? 3 : 2, usb_recv_buf_idx);
-      set_voltage(CORE, core_voltage, usb_recv_buf[2] == 'p');
-      if (usb_recv_buf[2] == 'p') {
-        sprintf(write_text, "      PROGRAM       ");
-        printf("Core voltage programmed -> %.2f\n", core_voltage);
-      } else {
-        sprintf(write_text, "        SET         ");
-        printf("Core voltage set -> %.2fV\n", core_voltage);
-      }
-    } else if (usb_recv_buf[0] == 'v' && usb_recv_buf[1] == 'i') {
-      float io_voltage = get_float(usb_recv_buf, usb_recv_buf[2] == 'p' ?  3 : 2, usb_recv_buf_idx);
-      set_voltage(IO, io_voltage, usb_recv_buf[2] == 'p');
-      if (usb_recv_buf[2] == 'p') {
-        sprintf(write_text, "      PROGRAM       ");
-        printf("IO voltage programmed -> %.2f\n", io_voltage);
-      } else {
-        sprintf(write_text, "        SET         ");
-        printf("IO voltage set -> %.2fV\n", io_voltage);
-      }
-    } else if (usb_recv_buf[0] == 'c' && usb_recv_buf[1] == '0') {
-      clk0_freq = get_int(usb_recv_buf, 2, usb_recv_buf_idx);
-      set_clock(CLK0, clk0_freq);
-      printf("CLK0 set -> %dkHz\n", clk0_freq);
-    } else if (usb_recv_buf[0] == 'c' && usb_recv_buf[1] == '1') {
-      clk1_freq = get_int(usb_recv_buf, 2, usb_recv_buf_idx);
-      set_clock(CLK1, clk1_freq);
-      printf("CLK1 set -> %dKHz\n", clk1_freq);
-    }
-    else if (usb_recv_buf[0] == 'h') {
-      printf("Help:\n");
-      printf("r<data> - Read data\n");
-      printf("w<data> - Write data\n");
-      printf("ss<speed> - Set SPI speed\n");
-      printf("sb<bits> - Set SPI bits\n");
-      printf("h - Help\n");
-    } else printf("Invalid command\n");
 
-    // Reset buffer index
-    usb_recv_buf_idx = 0;
+      for (int i = 0; i < usb_recv_buf_idx; i++) {
+        usb_recv_buf[i] = toupper(usb_recv_buf[i]);
+      }
+
+      // Handle serial data
+      if (usb_recv_buf[0] == 'T') {
+        if (usb_recv_buf[1] == '1')
+          brgtc6_test1(spi_send_buf, spi_recv_buf, spi_bits, spi_speed, 0, screen_text);
+        if (usb_recv_buf[1] == '2')
+          brgtc6_test2(spi_send_buf, spi_recv_buf, spi_bits, spi_speed, 0, screen_text, &clk0_freq, &clk1_freq);
+        else if (usb_recv_buf[1] == '3')
+          brgtc6_test3(spi_send_buf, spi_recv_buf, spi_bits, spi_speed, 0, screen_text, &clk0_freq, &clk1_freq);
+      } else if (usb_recv_buf[0] == 'B') {
+        make_bits(usb_recv_buf, spi_send_buf, usb_recv_buf_idx, 2, spi_bits);
+        int good_tx = bitwise_spi_read_write(spi_send_buf, spi_recv_buf, spi_bits, spi_speed, usb_recv_buf[1] - '0');
+        make_hex(spi_recv_buf, spi_recv_buf_hex, spi_bits / 4 + 1, spi_bits);
+        spi_recv_buf_hex[spi_bits / 4 + 1] = '\0';
+        if (good_tx) {
+          printf("Rd/Wr Good\n");
+          printf("Response -> 0x");
+          printf(spi_recv_buf_hex);
+        } else printf("Rd/Wr Fail");
+        printf("\n"); 
+      } else if (usb_recv_buf[0] == 'R') {
+        int good_tx = bitwise_spi_read(spi_recv_buf, spi_bits, spi_speed, usb_recv_buf[1] - '0');
+        make_hex(spi_recv_buf, spi_recv_buf_hex, spi_bits / 4 + 1, spi_bits);
+        spi_recv_buf_hex[spi_bits / 4 + 1] = '\0';
+        if (good_tx) {
+          printf("Read Good\n");
+          printf("Response -> 0x");
+          printf(spi_recv_buf_hex);
+        } else printf("Read Fail");
+        printf("\n");
+      } else if (usb_recv_buf[0] == 'W') {
+        make_bits(usb_recv_buf, spi_send_buf, usb_recv_buf_idx, 2, spi_bits);
+        int good_tx = bitwise_spi_write(spi_send_buf, spi_bits, spi_speed, usb_recv_buf[1] - '0');
+        if (good_tx) printf("Write Good\n");
+        else printf("Write Fail\n");
+      } else if (usb_recv_buf[0] == 'S' && usb_recv_buf[1] == 'S') {
+        int speed = get_int(usb_recv_buf, 2, usb_recv_buf_idx);
+        printf("SPI speed -> %dbps\n", speed);
+        spi_speed = speed;
+      } else if (usb_recv_buf[0] == 'S' && usb_recv_buf[1] == 'B') {
+        int bits = get_int(usb_recv_buf, 2, usb_recv_buf_idx);
+        printf("SPI bits -> %d\n", bits);
+        spi_bits = bits;
+      } else if (usb_recv_buf[0] == 'V' && usb_recv_buf[1] == 'C') {
+        float core_voltage = get_float(usb_recv_buf, usb_recv_buf[2] == 'P' ? 3 : 2, usb_recv_buf_idx);
+        set_voltage(CORE, core_voltage, usb_recv_buf[2] == 'p');
+        if (usb_recv_buf[2] == 'p') {
+          sprintf(screen_text, "      PROGRAM       ");
+          printf("Core voltage programmed -> %.2f\n", core_voltage);
+        } else {
+          sprintf(screen_text, "        SET         ");
+          printf("Core voltage set -> %.2fV\n", core_voltage);
+        }
+      } else if (usb_recv_buf[0] == 'V' && usb_recv_buf[1] == 'I') {
+        float io_voltage = get_float(usb_recv_buf, usb_recv_buf[2] == 'P' ?  3 : 2, usb_recv_buf_idx);
+        set_voltage(IO, io_voltage, usb_recv_buf[2] == 'P');
+        if (usb_recv_buf[2] == 'P') {
+          sprintf(screen_text, "      PROGRAM       ");
+          printf("IO voltage programmed -> %.2f\n", io_voltage);
+        } else {
+          sprintf(screen_text, "        SET         ");
+          printf("IO voltage set -> %.2fV\n", io_voltage);
+        }
+      } else if (usb_recv_buf[0] == 'C' && usb_recv_buf[1] == '0') {
+        clk0_freq = get_int(usb_recv_buf, 2, usb_recv_buf_idx);
+        set_clock(CLK0, clk0_freq);
+        printf("CLK0 set -> %dkHz\n", clk0_freq);
+      } else if (usb_recv_buf[0] == 'C' && usb_recv_buf[1] == '1') {
+        clk1_freq = get_int(usb_recv_buf, 2, usb_recv_buf_idx);
+        set_clock(CLK1, clk1_freq);
+        printf("CLK1 set -> %dKHz\n", clk1_freq);
+      }
+      else if (usb_recv_buf[0] == 'H') {
+        printf("Help:\n");
+        printf("r<data> - Read data\n");
+        printf("w<data> - Write data\n");
+        printf("ss<speed> - Set SPI speed\n");
+        printf("sb<bits> - Set SPI bits\n");
+        printf("h - Help\n");
+      } else printf("Invalid command\n");
+
+      // Reset buffer index
+      usb_recv_buf_idx = 0;
+    }
   }
 }
 
@@ -163,17 +162,20 @@ int main() {
   // Initialize SI5351 clock generator
   init_si5351();
 
+  // Reset BRGTC6 chips
+  brgtc6_reset();
+
   // Launch USB handling core
   multicore_launch_core1(core1_entry);
 
-  // Set BRGTC6 reset pins
+  // Initialize BRGTC6 reset pins
   gpio_init(BRGTC6_RESET_PIN_0);
   gpio_set_dir(BRGTC6_RESET_PIN_0, GPIO_OUT);
   gpio_put(BRGTC6_RESET_PIN_0, 1);
-
   gpio_init(BRGTC6_RESET_PIN_1);
   gpio_set_dir(BRGTC6_RESET_PIN_1, GPIO_OUT);
   gpio_put(BRGTC6_RESET_PIN_1, 1);
+  brgtc6_reset();
 
   int run_test = 1;
 
@@ -189,27 +191,27 @@ int main() {
       run_test = 1;
     }
     if (last_button_num == 1) {
-      sprintf(write_text, "IO:%.2fV,%.2fA,%.2fW", read_voltage(IO), read_current(IO), read_power(IO));
-      oled_write_text(0, write_text);
-      sprintf(write_text, "CR:%.2fV,%.2fA,%.2fW", read_voltage(CORE), read_current(CORE), read_power(CORE));
-      oled_write_text(1, write_text);
-      sprintf(write_text, "  CLK0: %.2fMHz   ", clk0_freq/1000.0);
-      oled_write_text(2, write_text);
-      sprintf(write_text, "  CLK1: %.2fMHz   ", clk1_freq/1000.0);
-      oled_write_text(3, write_text);
+      sprintf(screen_text, "IO:%.2fV,%.2fA,%.2fW", read_voltage(IO), read_current(IO), read_power(IO));
+      oled_write_text(0, screen_text);
+      sprintf(screen_text, "CR:%.2fV,%.2fA,%.2fW", read_voltage(CORE), read_current(CORE), read_power(CORE));
+      oled_write_text(1, screen_text);
+      sprintf(screen_text, "  CLK0: %.2fMHz   ", clk0_freq/1000.0);
+      oled_write_text(2, screen_text);
+      sprintf(screen_text, "  CLK1: %.2fMHz   ", clk1_freq/1000.0);
+      oled_write_text(3, screen_text);
     } else if (last_button_num == 2) {
       if (run_test) {
-        brgtc6_test1(spi_send_buf, spi_recv_buf, spi_bits, spi_speed, 1, write_text);
+        brgtc6_test1(spi_send_buf, spi_recv_buf, spi_bits, spi_speed, 1, screen_text);
         run_test = 0;
       }
     } else if (last_button_num == 3) {
       if (run_test) {
-        brgtc6_test2(spi_send_buf, spi_recv_buf, spi_bits, spi_speed, 1, write_text, &clk0_freq, &clk1_freq);
+        brgtc6_test2(spi_send_buf, spi_recv_buf, spi_bits, spi_speed, 1, screen_text, &clk0_freq, &clk1_freq);
         run_test = 0;
       }
     } else if (last_button_num == 4) {
       if (run_test) {
-        brgtc6_test3(spi_send_buf, spi_recv_buf, spi_bits, spi_speed, 1, write_text, &clk0_freq, &clk1_freq);
+        brgtc6_test3(spi_send_buf, spi_recv_buf, spi_bits, spi_speed, 1, screen_text, &clk0_freq, &clk1_freq);
         run_test = 0;
       }
     }

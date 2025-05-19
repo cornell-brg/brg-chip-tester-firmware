@@ -39,6 +39,8 @@
     "files.associations": {
         "*.va": "verilog",
         "brgtc6_test.h": "c",
-        "number_manip.h": "c"
+        "number_manip.h": "c",
+        "multicore.h": "c",
+        "oled_m204.h": "c"
     }
 }

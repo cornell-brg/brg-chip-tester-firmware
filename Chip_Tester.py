@@ -1,20 +1,27 @@
 import serial
 import time
+import threading
 
-# Colors
+# ANSI Color Codes for Terminal
 RED = "\033[31m"
 GREEN = "\033[32m"
 YELLOW = "\033[33m"
 BLUE = "\033[34m"
-MAGENTA = "\033[35m"
 CYAN = "\033[36m"
 RESET = "\033[0m"
 
+def read_serial(pico):
+    """ Continuously reads and prints incoming data from the Pico. """
+    while True:
+        if pico.in_waiting > 0:
+            line = pico.readline().decode('ascii', errors='replace').strip()
+            if line:
+                print(BLUE + "> " + CYAN + line + RESET)
+
 def main():
-    pico_port = 'COM7' # Change this to the correct port for board
+    pico_port = 'COM7'  # Change this to match your board
     baud_rate = 115200
 
-    # Open serial connection
     try:
         with serial.Serial(pico_port, baud_rate, timeout=1) as pico:
             print("---------------------------------------------")
@@ -27,37 +34,22 @@ def main():
             formatted_port = f"0{port_number}" if len(port_number) == 1 else port_number
             print("|" + GREEN + f"     Connected to Tester Board on COM{formatted_port}    " + RESET + "|")
             print("---------------------------------------------")
-            
+
+            # Start real-time reading in a separate thread
+            serial_thread = threading.Thread(target=read_serial, args=(pico,), daemon=True)
+            serial_thread.start()
+
             while True:
-                # Send data to the Pico
-                data_to_send = input(RED + "> ")
+                # Get user input and send to Pico
+                data_to_send = input()
                 if data_to_send.lower() == "exit":
                     print(YELLOW + "Exiting program..." + RESET)
                     break
-                data_with_eof = data_to_send + '\0'
-                pico.write(data_with_eof.encode('ascii'))  # Send as bytes
-
-                # Wait 32 sec seconds if test command passed
-                if data_to_send.lower().startswith('t'):
-                    time.sleep(40.0)
-                else:
-                    time.sleep(2.0)
-                
-                # Wait for a response from the Pico
-                responses = []
-                while pico.in_waiting == 0:  # Wait for data to be available
-                    time.sleep(0.1)  # Sleep briefly to avoid busy waiting
-                while pico.in_waiting > 0:  # Check if there is data waiting
-                    line = pico.readline().decode('ascii').strip()  # Read a line of input
-                    responses.append(line)
-                response = "\n".join(responses)  # Combine all lines into a single string
-                if response:
-                    print(RESET + "---------------------------------------------")
-                    print(BLUE + response + RESET)
-                    print("---------------------------------------------")
+            
+                pico.write(data_to_send.encode('ascii'))  # Send to Pico
 
     except serial.SerialException as e:
         print(RED + f"Error: {e}" + RESET)
 
-if __name__ == "__main__":                                                                   
+if __name__ == "__main__":
     main()
