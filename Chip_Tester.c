@@ -30,8 +30,8 @@ char usb_recv_buf[256];    // usb_recv_buf to store input
 int  usb_recv_buf_idx = 0; // Index for storing characters in the usb_recv_buf
 
 // Holds the frequency of the clocks
-int clk0_freq = 100000;
-int clk1_freq = 100000;
+int clk0_freq = 200000;
+int clk1_freq = 200000;
 
 // Holds the last user button pressed
 int last_button_num = 1;
@@ -112,12 +112,10 @@ void core1_entry() {
           printf("IO voltage set -> %.2fV\n", io_voltage);
         }
       } else if (usb_recv_buf[0] == 'C' && usb_recv_buf[1] == '0') {
-        clk0_freq = get_int(usb_recv_buf, 2, usb_recv_buf_idx);
-        set_clock(CLK0, clk0_freq);
+        set_clock(CLK0, get_int(usb_recv_buf, 2, usb_recv_buf_idx), &clk0_freq, &clk1_freq);
         printf("CLK0 set -> %dkHz\n", clk0_freq);
       } else if (usb_recv_buf[0] == 'C' && usb_recv_buf[1] == '1') {
-        clk1_freq = get_int(usb_recv_buf, 2, usb_recv_buf_idx);
-        set_clock(CLK1, clk1_freq);
+        set_clock(CLK1, get_int(usb_recv_buf, 2, usb_recv_buf_idx), &clk0_freq, &clk1_freq);
         printf("CLK1 set -> %dKHz\n", clk1_freq);
       }
       else if (usb_recv_buf[0] == 'H') {

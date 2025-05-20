@@ -8,6 +8,6 @@
 #define CLK1 1
 
 void init_si5351();
-void set_clock(int channel, int freq);
+void set_clock(int channel, int freq, int* clk0_freq, int* clk1_freq);
 
 #endif
