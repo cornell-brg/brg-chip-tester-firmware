@@ -11,6 +11,7 @@ BRG Chip Tester Firmware
   + Select the green "Import" button in the bottom right
   + Compiling and running the project is done using the
     corresponding buttons in the bottom right of VSCode
+- Python 3.x is required for the interface program to the board over USB
 
 # Running Independent Demo Programs
 - Setup: use this image as reference:![Correct Setup](./imgs/setup.jpeg)
@@ -70,7 +71,7 @@ BRG Chip Tester Firmware
     `brgtc6_test.c`.
 
 # Interfacing with the Board over USB
-- Plug in the board via the USB-C connector
+- Plug in the board to a computer via the USB-C connector
 - Run the `Chip_Tester.py` program, ensure the COM port is set correctly
   for the given board.
 - Receving messages
