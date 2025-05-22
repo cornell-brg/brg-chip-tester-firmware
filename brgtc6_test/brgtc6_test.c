@@ -111,82 +111,82 @@ void brgtc6_decode_spi_msg(bit* spi_buf, int spi_bits, char* msg) {
   // Decode message type
   switch((msg_val & 0x30000) >> 16) {
     case 0: // Channel message
-      sprintf(msg, "Channel: %d", msg_val & 0xFF);
+      sprintf(msg, "Channel %d", msg_val & 0xFF);
       break;
     case 2: // Config message
       switch((msg_val & 0x1F000) >> 12) {
         case 0:
-          sprintf(msg, "Loopback: %s", ((msg_val & 0xFFF) != 0) ? "Enabled" : "Disabled");
+          sprintf(msg, "Loopback %s (raw: 0x%x)", ((msg_val & 0xFFF) != 0) ? "Enabled" : "Disabled", msg_val & 0x3FFFF);
           break;
         case 1:
-          sprintf(msg, "Pattern Bypass: %s", ((msg_val & 0xFFF) != 0) ? "Enabled" : "Disabled");
+          sprintf(msg, "Pattern Bypass %s (raw: 0x%x)", ((msg_val & 0xFFF) != 0) ? "Enabled" : "Disabled", msg_val & 0x3FFFF);
           break;
         case 2:
-          sprintf(msg, "Pattern Mode: %s", ((msg_val & 0xFFF) != 0) ? "LFSR" : "Pattern 1");
+          sprintf(msg, "Pattern Mode %s (raw: 0x%x)", ((msg_val & 0xFFF) != 0) ? "LFSR" : "Pattern 1", msg_val & 0x3FFFF);
           break;
         case 3:
-          sprintf(msg, "Pattern 1 Up: 0x%x", msg_val & 0xFFF);
+          sprintf(msg, "Pattern 1 Up 0x%x (raw: 0x%x)", msg_val & 0xFFF, msg_val & 0x3FFFF);
           break;
         case 4:
-          sprintf(msg, "Pattern 2 Up: 0x%x", msg_val & 0xFFF);
+          sprintf(msg, "Pattern 2 Up 0x%x (raw: 0x%x)", msg_val & 0xFFF, msg_val & 0x3FFFF);
           break;
         case 5:
-          sprintf(msg, "Pattern 1 Down: 0x%x", msg_val & 0xFFF);
+          sprintf(msg, "Pattern 1 Down 0x%x (raw: 0x%x)", msg_val & 0xFFF, msg_val & 0x3FFFF);
           break;
         case 6:
-          sprintf(msg, "Pattern 2 Down: 0x%x", msg_val & 0xFFF);
+          sprintf(msg, "Pattern 2 Down 0x%x (raw: 0x%x)", msg_val & 0xFFF, msg_val & 0x3FFFF);
           break;
         case 7:
           switch(msg_val & 0xFFF) {
             case 0:
-              sprintf(msg, "Pattern State: Idle");
+              sprintf(msg, "Pattern State Idle (raw: 0x%x)", msg_val & 0x3FFFF);
               break;
             case 1:
-              sprintf(msg, "Pattern State: Running");
+              sprintf(msg, "Pattern State Running (raw: 0x%x)", msg_val & 0x3FFFF);
               break;
             case 2:
-              sprintf(msg, "Pattern State: Locked");
+              sprintf(msg, "Pattern State Locked (raw: 0x%x)", msg_val & 0x3FFFF);
               break;
             case 3:
-              sprintf(msg, "Pattern State: Error");
+              sprintf(msg, "Pattern State Error (raw: 0x%x)", msg_val & 0x3FFFF);
               break;
             default:
-              sprintf(msg, "Pattern State: Unknown");
+              sprintf(msg, "Pattern State Unknown (raw: 0x%x)", msg_val & 0x3FFFF);
               break;
           }
           break;
         case 8:
-          sprintf(msg, "Pattern Error Count: %d", msg_val & 0xFFF);
+          sprintf(msg, "Pattern Error Count %d (raw: 0x%x)", msg_val & 0xFFF, msg_val & 0x3FFFF);
           break;
         case 9:
-          sprintf(msg, "Go: %s", ((msg_val & 0xFFF) != 0) ? "Enabled" : "Disabled");
+          sprintf(msg, "Go %s (raw: 0x%x)", ((msg_val & 0xFFF) != 0) ? "Enabled" : "Disabled", msg_val & 0x3FFFF);
           break;
         case 10:
-          sprintf(msg, "Clock Divider Factor: %d", msg_val & 0xFFF);
+          sprintf(msg, "Clock Divider Factor %d (raw: 0x%x)", msg_val & 0xFFF, msg_val & 0x3FFFF);
           break;
         case 11:
-          sprintf(msg, "Clock Divider Skew: %d", msg_val & 0xFFF);
+          sprintf(msg, "Clock Divider Skew %d (raw: 0x%x)", msg_val & 0xFFF, msg_val & 0x3FFFF);
           break;
         case 12:
-          sprintf(msg, "CRC Error Bit: %s", ((msg_val & 0xFFF) != 0) ? "Enabled" : "Disabled");
+          sprintf(msg, "CRC Error Bit %s (raw: 0x%x)", ((msg_val & 0xFFF) != 0) ? "Enabled" : "Disabled", msg_val & 0x3FFFF);
           break;
         case 13:
-          sprintf(msg, "Up Repair Select: %d", msg_val & 0xFFF);
+          sprintf(msg, "Up Repair Select %d (raw: 0x%x)", msg_val & 0xFFF, msg_val & 0x3FFFF);
           break;
         case 14:
-          sprintf(msg, "Down Repair Select: %d", msg_val & 0xFFF);
+          sprintf(msg, "Down Repair Select %d (raw: 0x%x)", msg_val & 0xFFF, msg_val & 0x3FFFF);
           break;
         case 15:
-          sprintf(msg, "Pattern Error Count: %d", msg_val & 0xFFF);
+          sprintf(msg, "Pattern Error Count %d (raw: 0x%x)", msg_val & 0xFFF, msg_val & 0x3FFFF);
           break;
         case 16:
-          sprintf(msg, "Next Credit Count: %d", msg_val & 0xFFF);
+          sprintf(msg, "Next Credit Count %d (raw: 0x%x)", msg_val & 0xFFF, msg_val & 0x3FFFF);
           break;
         case 17:
-          sprintf(msg, "Credit Reset Delay: %d", msg_val & 0xFFF);
+          sprintf(msg, "Credit Reset Delay %d (raw: 0x%x)", msg_val & 0xFFF, msg_val & 0x3FFFF);
           break;
         default:
-          sprintf(msg, "Unknown message: %x", msg_val & 0x3FFFF);
+          sprintf(msg, "Unknown message %x", msg_val & 0x3FFFF);
           break;
       }
   } 
