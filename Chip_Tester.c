@@ -164,9 +164,7 @@ int main() {
   init_ina220s();
 
   // Initialize SI5351 clock generator
-  // init_si5351();
-  set_clock(CLK0, clk0_freq, &clk0_freq, &clk1_freq);
-  set_clock(CLK1, clk1_freq, &clk0_freq, &clk1_freq);
+  init_si5351();
 
   // Reset BRGTC6 chips
   brgtc6_reset();
