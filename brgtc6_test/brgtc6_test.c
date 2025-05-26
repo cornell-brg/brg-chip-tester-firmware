@@ -91,9 +91,9 @@ const uint32_t brgtc6_dual_pattern_lfsr_test[][2] = {
 };
 
 const uint32_t brgtc6_dual_test_clock_combs[3][2] = {
-  {200000, 200000},
-  {10000, 200000},
-  {200000, 10000}
+  {100000, 100000},
+  {10000, 100000},
+  {100000, 10000}
 };
 
 void brgtc6_reset() {

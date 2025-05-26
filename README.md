@@ -61,8 +61,8 @@ BRG Chip Tester Firmware
     for 10 seconds, and then confirming that the observed patterns on both chips
     are correct. The specific SPI commands sent are seen in the test vector
     `brgtc6_dual_pattern_fixed_test` on in `brgtc6_test.c`. This test is run
-    for the following clock frequency combinations: chip 0 and chip 1 both 200
-    MHz, chip 0 200 MHz and chip 1 10 MHz, chip 0 10 MHz and chip 1 200 MHz.
+    for the following clock frequency combinations: chip 0 and chip 1 both 100
+    MHz, chip 0 100 MHz and chip 1 10 MHz, chip 0 10 MHz and chip 1 100 MHz.
     Upon successful completion of all three tests, a `TEST PASS` message should
     be printed.
   + Pressing the "4" button will start an identical test to that when pressing
@@ -122,4 +122,4 @@ BRG Chip Tester Firmware
       - Example: `c010000` - sets the clock frequency for chip 0 to 10000 kHz
         (10 MHz).
       - NOTE: only the following clock frequencies are supported as of now:
-        10 MHz, 50 MHz, 100 MHz, 200 MHz. 
+        10 KHz, 10 MHz, 50 MHz, 100 MHz. 
