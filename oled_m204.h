@@ -2,7 +2,8 @@
 #define OLED_M204_H
 
 #include "common.h"
-#include "i2c_custom.h"
+
+#define OLED_ADDR   0x3C
 
 void init_oled();
 void oled_clear_screen();

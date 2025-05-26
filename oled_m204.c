@@ -19,9 +19,8 @@ void init_oled() {
 
 	for (int i = 0; i < sizeof(init_seq); i++) {
 		uint8_t command[] = {0x80, init_seq[i]};
-		i2c_write_blocking_err_check(I2C_CHAN, OLED_ADDR, command, 2, i != sizeof(init_seq) - 1);
-		sleep_ms(1);
-		if (init_seq[i] == 0x72) i2c_write_blocking_err_check(I2C_CHAN, OLED_ADDR, rom, 2, true);
+		i2c_write_blocking(I2C_CHAN, OLED_ADDR, command, 2, i != sizeof(init_seq) - 1);
+		if (init_seq[i] == 0x72) i2c_write_blocking(I2C_CHAN, OLED_ADDR, rom, 2, true);
 	}
 }
 
@@ -38,14 +37,14 @@ void oled_row_sel(int row) {
 	else if (row == 3) row_hex = 0xE0;
 	else return;
 	const uint8_t next_row[] = {0x80, row_hex};
-	i2c_write_blocking_err_check(I2C_CHAN, OLED_ADDR, next_row, 2, false);
+	i2c_write_blocking(I2C_CHAN, OLED_ADDR, next_row, 2, false);
 }
 
 void oled_write_text(int row, const char* text) {
 	oled_row_sel(row);
 	for (int i = 0; i < strlen(text); i++) {
 		const uint8_t send_data[] = {0x40, (uint8_t)(text[i])};
-		i2c_write_blocking_err_check(I2C_CHAN, OLED_ADDR, send_data, 2, i != strlen(text) - 1);
+		i2c_write_blocking(I2C_CHAN, OLED_ADDR, send_data, 2, i != strlen(text) - 1);
 	}
 }
 
@@ -54,6 +53,6 @@ void oled_write_blank(int row) {
 	char* text = "                    ";
 	for (int i = 0; i < strlen(text); i++) {
 		const uint8_t send_data[] = {0x40, 0x20};
-		i2c_write_blocking_err_check(I2C_CHAN, OLED_ADDR, send_data, 2, i != strlen(text) - 1);
+		i2c_write_blocking(I2C_CHAN, OLED_ADDR, send_data, 2, i != strlen(text) - 1);
 	}
 }

@@ -57,7 +57,7 @@ uint8_t init_seq[][2] = {
 
 void init_si5351() {
   for (int i = 0; i < sizeof(init_seq) / sizeof(init_seq[0]); i++)
-    i2c_write_blocking_err_check(I2C_CHAN, CLK_GEN, init_seq[i], 2, false);
+    i2c_write_blocking(I2C_CHAN, CLK_GEN_ADDR, init_seq[i], 2, false);
 }
 
 void set_clock(int channel, int freq, int* clk0_freq, int* clk1_freq) {
@@ -161,5 +161,5 @@ void set_clock(int channel, int freq, int* clk0_freq, int* clk1_freq) {
   }
   
   for (int i = 0; i < sizeof(init_seq) / sizeof(init_seq[0]); i++)
-    i2c_write_blocking_err_check(I2C_CHAN, CLK_GEN, init_seq[i], 2, false);
+    i2c_write_blocking(I2C_CHAN, CLK_GEN_ADDR, init_seq[i], 2, false);
 }

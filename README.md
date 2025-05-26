@@ -85,7 +85,7 @@ BRG Chip Tester Firmware
     hexadecimal number provided to the specified chip (0 or 1) over SPI, as well
     as performs a subsequent read from that chip. Note that the width of this
     hex number is dependent on the number of SPI bits that are used, which is
-    set as 20 for BRGTC6.
+    set as 18 for BRGTC6.
       + Example: `b012345` - writes 0x12345 to chip 0 and performs a read,
         printing the read value to the console.
   - `r<chip (0 or 1)` - this command does a read from the specified chip (0 or 1)
@@ -95,13 +95,13 @@ BRG Chip Tester Firmware
   - `w<chip (0 or 1)><5-digit number>` - this command will do a write of the 5-digit
     hexadecimal number provided to the specified chip (0 or 1) over SPI. Note that 
     the width of this hex number is dependent on the number of SPI bits that are 
-    used, which is set as 20 for BRGTC6.
+    used, which is set as 18 for BRGTC6.
       + Example: `w13BCDE` - writes 0x3BCDE to chip 1 over SPI.
   - `ss<num>` - this command will set the SPI speed in bits per second to
     the given number. This is 1000 by default.
       - Example: `ss10000` - sets the SPI speed to 10000 bps.
   - `sb<num>` - this command will set the SPI bitwidth to the given number. 
-    This is 20 by default.
+    This is 18 by default.
       - Example: `sb30` - sets the SPI bitwidth to 30 bits.
   - `vc<p><float num>` - this command sets the core voltage to the float number
     provided to it, with the maximum value being 3.4V. If the p-flag is added,

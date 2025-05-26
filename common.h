@@ -35,12 +35,5 @@ typedef uint8_t bit;
 #define SDA_PIN 0
 #define SCL_PIN 1
 #define I2C_BAUD_RATE 400000 // 400kHz
-#define OLED_ADDR   0x3C
-#define IO_EXP_ADDR 0x20
-#define CORE_LDO    0x2C
-#define IO_LDO      0x2E
-#define CORE_SENS   0x44
-#define IO_SENS     0x45
-#define CLK_GEN     0x60
 
 #endif

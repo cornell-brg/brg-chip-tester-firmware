@@ -43,7 +43,6 @@ add_compile_options(-Ofast)
 target_sources(Chip_Tester PRIVATE 
     Chip_Tester.c 
     number_manip.c 
-    i2c_custom.c 
     bitwise_spi.c 
     oled_m204.c
     tca6408a.c

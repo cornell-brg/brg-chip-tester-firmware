@@ -1,6 +1,5 @@
 // General includes
 #include "number_manip.h"
-#include "i2c_custom.h"
 #include "bitwise_spi.h"
 #include "oled_m204.h"
 #include "tca6408a.h"
@@ -150,8 +149,15 @@ int main() {
   gpio_set_function(SDA_PIN, GPIO_FUNC_I2C);
   gpio_set_function(SCL_PIN, GPIO_FUNC_I2C);
 
-  // Initialize OLED screen (blast initialization pls turn on properly)
-  for (int i = 0; i < 10; i++) init_oled();
+  // Initialize TCA6408A GPIO expander
+  init_tca6408a();
+
+  // Initialize OLED screen and reset
+  sleep_ms(1);
+  set_output(OLED_RST_PIN, 0);
+  sleep_ms(1);
+  set_output(OLED_RST_PIN, 1);
+  init_oled();
   oled_clear_screen();
 
   // Initialize INA220 voltage/current sensors
