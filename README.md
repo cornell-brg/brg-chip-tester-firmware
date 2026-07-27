@@ -50,6 +50,11 @@ BRG Chip Tester Firmware
     as defined in the section below to see a detailed list of SPI messages
     sent for each demo program when run.
 - Demo Programs
+  + While any of the demos below is running, the third row of the screen shows
+    the live current draw on the IO and core (CR) channels in milliamps, updated
+    as the test progresses and throughout the 10-second pattern runs. For the
+    demos that sweep clock frequencies, both clocks are shown together on the
+    second row as `CLK <clk0>/<clk1>MHz`.
   + Pressing the "1" button will return to the status screen seen on startup
   + Pressing the "2" button will start a loopback configuration test where
     each chip is configured with the specified settings as seen in the test
@@ -62,7 +67,7 @@ BRG Chip Tester Firmware
     are correct. The specific SPI commands sent are seen in the test vector
     `brgtc6_dual_pattern_fixed_test` on in `brgtc6_test.c`. This test is run
     for the following clock frequency combinations: chip 0 and chip 1 both 100
-    MHz, chip 0 100 MHz and chip 1 10 MHz, chip 0 10 MHz and chip 1 100 MHz.
+    MHz, chip 0 10 MHz and chip 1 100 MHz, chip 0 100 MHz and chip 1 10 MHz.
     Upon successful completion of all three tests, a `TEST PASS` message should
     be printed.
   + Pressing the "4" button will start an identical test to that when pressing
@@ -104,14 +109,14 @@ BRG Chip Tester Firmware
     This is 18 by default.
       - Example: `sb30` - sets the SPI bitwidth to 30 bits.
   - `vc<p><float num>` - this command sets the core voltage to the float number
-    provided to it, with the maximum value being 3.4V. If the p-flag is added,
+    provided to it, with the settable range being 0.8V to 3.4V. If the p-flag is added,
     the provided voltage will be set in nonvolatile memory so that it is used
     on startup of the board, this value is 1.0V by default.
       - Example: `vcp1.1` - sets the core voltage on startup to be 1.1V.
       - Example: `vc1.1` - immediately sets the core voltage to be 1.1V, but
         the voltage on startup will be the value stored in NVM before.
   - `vi<p><float num>` - this command sets the IO voltage to the float number
-    provided to it, with the maximum value being 3.4V. If the p-flag is added,
+    provided to it, with the settable range being 0.8V to 3.4V. If the p-flag is added,
     the provided voltage will be set in nonvolatile memory so that it is used
     on startup of the board, this value is 3.3V by default.
       - Example: `vip3.2` - sets the core voltage on startup to be 3.2V.
@@ -122,4 +127,7 @@ BRG Chip Tester Firmware
       - Example: `c010000` - sets the clock frequency for chip 0 to 10000 kHz
         (10 MHz).
       - NOTE: only the following clock frequencies are supported as of now:
-        10 KHz, 10 MHz, 50 MHz, 100 MHz. 
+        10 KHz, 10 MHz, 50 MHz, 100 MHz. Any other value is ignored and the
+        clock is left unchanged.
+  - `h` - this command prints a short summary of the available commands to the
+    console.
