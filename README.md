@@ -7,7 +7,7 @@ BRG Chip Tester Firmware
   + Go to the Pi Pico extension tab
   + Select "Import Project"
   + Change the path to match this cloned directory
-  + Select SDK version as "v2.1.0"
+  + Select SDK version as "v2.2.0"
   + Select the green "Import" button in the bottom right
   + Compiling and running the project is done using the
     corresponding buttons in the bottom right of VSCode

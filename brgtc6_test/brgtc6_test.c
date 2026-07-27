@@ -3,6 +3,30 @@
 // Text buffer for printing test results
 char test_res_serial_buf[100];
 
+// Screen row holding the live IO/CORE current readout during a test
+#define CURRENT_ROW 2
+
+// Refresh period of the current readout while waiting on the pattern checkers
+#define CURRENT_REFRESH_MS 200
+
+// Reads both sense channels and repaints the current row. Skipped entirely when
+// the screen is not in use so a USB-triggered test adds no I2C traffic.
+static void write_current_row(int write_screen, char* screen_text) {
+  if (!write_screen) return;
+  sprintf(screen_text, "IO:%4dmA CR:%4dmA ",
+    (int)(read_current(IO) * 1000.0 + 0.5),
+    (int)(read_current(CORE) * 1000.0 + 0.5));
+  oled_write_text(CURRENT_ROW, screen_text);
+}
+
+// Waits ms milliseconds, refreshing the current readout as it goes
+static void dwell_with_current(int ms, int write_screen, char* screen_text) {
+  for (int elapsed = 0; elapsed < ms; elapsed += CURRENT_REFRESH_MS) {
+    write_current_row(write_screen, screen_text);
+    sleep_ms(ms - elapsed < CURRENT_REFRESH_MS ? ms - elapsed : CURRENT_REFRESH_MS);
+  }
+}
+
 const uint32_t brgtc6_single_config_loopback_test_0[][2] = {
   {BRGTC6_MK_CNFG_MSG(CFG_ADDR_CLK_DIV_FACTOR, 2), CHIP_0}, // Set chip 0 clock divider factor to 2
   {BRGTC6_MK_CNFG_MSG(CFG_ADDR_CLK_DIV_SKEW, 0), CHIP_0},   // Set chip 0 clock divider skew to 0
@@ -212,6 +236,7 @@ void brgtc6_test1(bit* spi_send_buf, bit* spi_recv_buf, int spi_bits, int spi_sp
     sprintf(screen_text, "   Running 1/2...   ");
     oled_write_text(3, screen_text);
   }
+  write_current_row(write_screen, screen_text);
   for (int i = 0; i < sizeof(brgtc6_single_config_loopback_test_0)/sizeof(brgtc6_single_config_loopback_test_0[0]); i++) {
     uint_to_bits(brgtc6_single_config_loopback_test_0[i][0], spi_send_buf, spi_bits);
     brgtc6_decode_spi_msg(spi_send_buf, spi_bits, test_res_serial_buf);
@@ -226,6 +251,7 @@ void brgtc6_test1(bit* spi_send_buf, bit* spi_recv_buf, int spi_bits, int spi_sp
     bits_to_uint(spi_recv_buf, &spi_recv_val, spi_bits);
     brgtc6_decode_spi_msg(spi_recv_buf, spi_bits, test_res_serial_buf);
     printf("Rcvd: %s\n", test_res_serial_buf);
+    write_current_row(write_screen, screen_text);
   }
 
   // Fail if error, stop tests
@@ -246,6 +272,7 @@ void brgtc6_test1(bit* spi_send_buf, bit* spi_recv_buf, int spi_bits, int spi_sp
     sprintf(screen_text, "   Running 2/2...   ");
     oled_write_text(3, screen_text);
   }
+  write_current_row(write_screen, screen_text);
   for (int i = 0; i < sizeof(brgtc6_single_config_loopback_test_1)/sizeof(brgtc6_single_config_loopback_test_1[0]); i++) {
     uint_to_bits(brgtc6_single_config_loopback_test_1[i][0], spi_send_buf, spi_bits);
     brgtc6_decode_spi_msg(spi_send_buf, spi_bits, test_res_serial_buf);
@@ -260,7 +287,10 @@ void brgtc6_test1(bit* spi_send_buf, bit* spi_recv_buf, int spi_bits, int spi_sp
     bits_to_uint(spi_recv_buf, &spi_recv_val, spi_bits);
     brgtc6_decode_spi_msg(spi_recv_buf, spi_bits, test_res_serial_buf);
     printf("Rcvd: %s\n", test_res_serial_buf);
+    write_current_row(write_screen, screen_text);
   }
+
+  write_current_row(write_screen, screen_text);
 
   // Pass or fail test
   if (fail) {
@@ -299,17 +329,16 @@ void brgtc6_test2(bit* spi_send_buf, bit* spi_recv_buf, int spi_bits, int spi_sp
     brgtc6_reset();
     printf("Set clock 0: %d - Set clock 1: %d\n", brgtc6_dual_test_clock_combs[i][0], brgtc6_dual_test_clock_combs[i][1]);
     if (write_screen) {
-      sprintf(screen_text, "  CLK0: %.2fMHz   ", (*clk0_freq)/1000.0);
+      sprintf(screen_text, "CLK %6.2f/%6.2fMHz", (*clk0_freq)/1000.0, (*clk1_freq)/1000.0);
       oled_write_text(1, screen_text);
-      sprintf(screen_text, "  CLK1: %.2fMHz   ", (*clk1_freq)/1000.0);
-      oled_write_text(2, screen_text);
       sprintf(screen_text, "   Running %d/%d...   ", i+1, sizeof(brgtc6_dual_test_clock_combs)/sizeof(brgtc6_dual_test_clock_combs[0]));
       oled_write_text(3, screen_text);
     }
+    write_current_row(write_screen, screen_text);
 
     // Send configuration commands and check for errors
     for (int j = 0; j < sizeof(brgtc6_dual_pattern_fixed_test)/sizeof(brgtc6_dual_pattern_fixed_test[0]); j++) {
-      if (j == 18) sleep_ms(10000);
+      if (j == 18) dwell_with_current(10000, write_screen, screen_text);
       uint_to_bits(brgtc6_dual_pattern_fixed_test[j][0], spi_send_buf, spi_bits);
       brgtc6_decode_spi_msg(spi_send_buf, spi_bits, test_res_serial_buf);
       printf("Chip %d - Sent: %s - ", brgtc6_dual_pattern_fixed_test[j][1], test_res_serial_buf);
@@ -323,7 +352,10 @@ void brgtc6_test2(bit* spi_send_buf, bit* spi_recv_buf, int spi_bits, int spi_sp
       bits_to_uint(spi_recv_buf, &spi_recv_val, spi_bits);
       brgtc6_decode_spi_msg(spi_recv_buf, spi_bits, test_res_serial_buf);
       printf("Rcvd: %s\n", test_res_serial_buf);
+      write_current_row(write_screen, screen_text);
     }
+
+    write_current_row(write_screen, screen_text);
 
     // Fail if error, stop tests
     if (fail) {
@@ -374,17 +406,16 @@ void brgtc6_test3(bit* spi_send_buf, bit* spi_recv_buf, int spi_bits, int spi_sp
     brgtc6_reset();
     printf("Set clock 0: %d - Set clock 1: %d\n", brgtc6_dual_test_clock_combs[i][0], brgtc6_dual_test_clock_combs[i][1]);
     if (write_screen) {
-      sprintf(screen_text, "  CLK0: %.2fMHz   ", (*clk0_freq)/1000.0);
+      sprintf(screen_text, "CLK %6.2f/%6.2fMHz", (*clk0_freq)/1000.0, (*clk1_freq)/1000.0);
       oled_write_text(1, screen_text);
-      sprintf(screen_text, "  CLK1: %.2fMHz   ", (*clk1_freq)/1000.0);
-      oled_write_text(2, screen_text);
       sprintf(screen_text, "   Running %d/%d...   ", i+1, sizeof(brgtc6_dual_test_clock_combs)/sizeof(brgtc6_dual_test_clock_combs[0]));
       oled_write_text(3, screen_text);
     }
+    write_current_row(write_screen, screen_text);
 
     // Send configuration commands and check for errors
     for (int j = 0; j < sizeof(brgtc6_dual_pattern_lfsr_test)/sizeof(brgtc6_dual_pattern_lfsr_test[0]); j++) {
-      if (j == 14) sleep_ms(10000);
+      if (j == 14) dwell_with_current(10000, write_screen, screen_text);
       uint_to_bits(brgtc6_dual_pattern_lfsr_test[j][0], spi_send_buf, spi_bits);
       brgtc6_decode_spi_msg(spi_send_buf, spi_bits, test_res_serial_buf);
       printf("Chip %d - Sent: %s - ", brgtc6_dual_pattern_lfsr_test[j][1], test_res_serial_buf);
@@ -398,7 +429,10 @@ void brgtc6_test3(bit* spi_send_buf, bit* spi_recv_buf, int spi_bits, int spi_sp
       bits_to_uint(spi_recv_buf, &spi_recv_val, spi_bits);
       brgtc6_decode_spi_msg(spi_recv_buf, spi_bits, test_res_serial_buf);
       printf("Rcvd: %s\n", test_res_serial_buf);
+      write_current_row(write_screen, screen_text);
     }
+
+    write_current_row(write_screen, screen_text);
 
     // Fail if error, stop tests
     if (fail) {

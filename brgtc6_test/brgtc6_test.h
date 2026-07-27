@@ -6,6 +6,7 @@
 #include "../number_manip.h"
 #include "../si5351.h"
 #include "../oled_m204.h"
+#include "../ina220.h"
 
 void brgtc6_reset();
 void brgtc6_decode_spi_msg(bit* spi_recv_buf, int spi_bits, char* write_text);
