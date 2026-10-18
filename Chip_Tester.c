@@ -149,12 +149,11 @@ int main() {
   gpio_set_function(SDA_PIN, GPIO_FUNC_I2C);
   gpio_set_function(SCL_PIN, GPIO_FUNC_I2C);
 
+  // Free the bus in case the SI5351 powered up holding SDA low
+  if (!i2c_bus_free()) i2c_bus_recover();
+
   // Initialize TCA6408A GPIO expander
   init_tca6408a();
-
-  // Initialize SI5351 clock generator (must come before the OLED, as in the
-  // ECE6745 tester, or the screen may not come up on power-on)
-  init_si5351();
 
   // Initialize OLED screen and reset
   sleep_ms(1);
@@ -166,6 +165,10 @@ int main() {
 
   // Initialize INA220 voltage/current sensors
   init_ina220s();
+
+  // Initialize SI5351 clock generator last, after the other I2C devices, since
+  // it can lock up the bus (recovers and retries internally)
+  init_si5351();
 
   // Reset BRGTC6 chips
   brgtc6_reset();
