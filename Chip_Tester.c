@@ -152,6 +152,10 @@ int main() {
   // Initialize TCA6408A GPIO expander
   init_tca6408a();
 
+  // Initialize SI5351 clock generator (must come before the OLED, as in the
+  // ECE6745 tester, or the screen may not come up on power-on)
+  init_si5351();
+
   // Initialize OLED screen and reset
   sleep_ms(1);
   set_output(OLED_RST_PIN, 0);
@@ -162,9 +166,6 @@ int main() {
 
   // Initialize INA220 voltage/current sensors
   init_ina220s();
-
-  // Initialize SI5351 clock generator
-  init_si5351();
 
   // Reset BRGTC6 chips
   brgtc6_reset();
